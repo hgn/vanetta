@@ -103,8 +103,27 @@ def draw_topology( surface, streams, width, height )
   cr.set_line_width(1.0)
 
 
-  streams.each do |key, value|
+  streams.sort.each do |time, nodes|
+	  nodes.sort.each do |node, node_data|
 
+		  x = node_data["coordinates"][0] - x_offset
+		  y = node_data["coordinates"][1] - y_offset
+
+		  node_color = colors[node.to_i % colors.size]
+		  node_color.alpha = 0.5
+		  cr.set_source_color(node_color)
+		  cr.set_line_width(1.0)
+		  puts "x #{x.to_f * x_scaling} y #{y.to_f * y_scaling}"
+		  cr.arc(x.to_f * x_scaling, y.to_f * y_scaling, 100.0, 0, 2 * Math::PI);
+		  cr.fill
+	  end
+  end
+
+  return cr.show_page
+
+  exit
+
+  streams.sort.each do |key, value|
     draw_already_once = 0
 
     # rand() ONE value of the whole dataset
@@ -257,14 +276,14 @@ def split_trace_into_streams( file )
     line.chomp!
 	if line =~ /(\d+.\d+)\W+(\d+)\W+(\d+)\W+(\d+)\W+(\d+)/
 		time       = $1.to_f
-		node_index = $3.to_i
+		node_index = $2.to_i
 		if hash[time] == nil
 			hash[time] = Hash.new
 		end
 		if hash[time][node_index] == nil
 			hash[time][node_index] = Hash.new
 		end
-		hash[time][node_index]["coordinates"] = [ $3, $4, $5 ]
+		hash[time][node_index]["coordinates"] = [ $3.to_i, $4.to_i, $5.to_i ]
 	end
   end
   return hash
