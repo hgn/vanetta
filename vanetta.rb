@@ -44,8 +44,8 @@ moving_node = 10
 
 def draw_topology( surface, streams, width, height )
 
-  x_max = 0; y_max = 0;
-  no_steps = 0
+  x_max = Integer::MIN; y_max = Integer::MIN;
+  x_min = Integer::MAX; y_min = Integer::MAX;
   x_scaling = 0; y_scaling = 0;
 
   colors = [
@@ -66,30 +66,36 @@ def draw_topology( surface, streams, width, height )
   cr.rectangle(0, 0, width, height).fill
   coordinates = Hash.new
 
-  # first iterate over all x and y values
-  # and determine maximum of it. This step
-  # is required to determine the scaling factor
-  streams.each do |key, value|
-    no_steps = 0
-    value.each do |dataset|
-
-      puts "DATA: #{key} #{dataset[0]} #{dataset[1]} #{dataset[2]}" if @options.verbose
-
-      if x_max <= dataset[1].to_i
-        x_max =  dataset[1].to_i
-      end
-      if y_max <= dataset[2].to_i
-        y_max =  dataset[2].to_i
-      end
-    end
+  # first iterate over all x and y values and
+  # determine minimum and maximum of it. This
+  # step is required to determine the scaling factor
+  streams.each do |time, value|
+	  value.each do |nodes, value|
+		  if x_max <= value["coordinates"][0].to_i
+			  x_max =  value["coordinates"][0].to_i
+		  end
+		  if y_max <= value["coordinates"][1].to_i
+			  y_max =  value["coordinates"][1].to_i
+		  end
+		  if x_min >= value["coordinates"][0].to_i
+			  x_min =  value["coordinates"][0].to_i
+		  end
+		  if y_min >= value["coordinates"][1].to_i
+			  y_min =  value["coordinates"][1].to_i
+		  end
+	  end
   end
 
-  x_max = 1000
-  y_max = 1000
+  if @options.verbose
+	  $stderr.print "offset x: #{x_min} y: #{y_min}\n"
+	  $stderr.print "scaling x: #{x_max - x_min} y: #{y_max - y_min}\n"
+  end
 
-  puts "new scaling factor - x_max: #{x_max} y_max #{y_max}" if @options.verbose
-  x_scaling = width.to_f / x_max
-  y_scaling = height.to_f / y_max
+  x_scaling = width.to_f / (x_max - x_min)
+  y_scaling = height.to_f / (y_max - y_min)
+
+  x_offset = x_min
+  y_offset = y_min
 
   # and draw the streams
   current_x = -1
@@ -249,18 +255,23 @@ def split_trace_into_streams( file )
   fd = File.open(file)
   fd.readlines.each do |line|
     line.chomp!
-    if line =~ /(\d+)\W+(\d+\.\d+)\W+(\d+\.\d+)\W+(\d+\.\d+)/
-      if hash[$1] == nil
-        hash[$1] = Array.new
-      end
-      hash[$1] << [ $2, $3, $4 ]
-    end
+	if line =~ /(\d+.\d+)\W+(\d+)\W+(\d+)\W+(\d+)\W+(\d+)/
+		time       = $1.to_f
+		node_index = $3.to_i
+		if hash[time] == nil
+			hash[time] = Hash.new
+		end
+		if hash[time][node_index] == nil
+			hash[time][node_index] = Hash.new
+		end
+		hash[time][node_index]["coordinates"] = [ $3, $4, $5 ]
+	end
   end
   return hash
 end
 
 
-def init(arguments, stdin)
+def init( arguments, stdin )
   @arguments = arguments
   @stdin = stdin
 
@@ -336,6 +347,14 @@ def process_command
   end
   create_topology( streams )
 
+end
+
+# define Integer::MAX, Integer::MIN
+class Integer
+	N_BYTES = [42].pack('i').size
+	N_BITS = N_BYTES * 8
+	MAX = 2 ** (N_BITS - 2) - 1
+	MIN = -MAX - 1
 end
 
 
