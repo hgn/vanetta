@@ -61,6 +61,8 @@ def draw_topology( surface, streams, width, height )
     Cairo::Color::RGB.new(0.3, 0.3, 0.3),
   ]
 
+  black = Cairo::Color::RGB.new(0.0, 0.0, 0.0)
+
   cr = Cairo::Context.new(surface)
   cr.set_source_color(:white)
   cr.rectangle(0, 0, width, height).fill
@@ -116,8 +118,14 @@ def draw_topology( surface, streams, width, height )
 		  puts "x #{x.to_f * x_scaling} y #{y.to_f * y_scaling}"
 		  cr.arc(x.to_f * x_scaling, y.to_f * y_scaling, 100.0, 0, 2 * Math::PI);
 		  cr.fill
+
+		  cr.set_source_color(black)
+      cr.move_to(x.to_f * x_scaling, y.to_f * y_scaling)
+      cr.show_text( " #{sprintf("%d", node.to_i)}" )
+      cr.stroke
 	  end
   end
+  
 
   return cr.show_page
 
