@@ -274,17 +274,29 @@ def split_trace_into_streams( file )
   fd = File.open(file)
   fd.readlines.each do |line|
     line.chomp!
-	if line =~ /(\d+.\d+)\W+(\d+)\W+(\d+)\W+(\d+)\W+(\d+)/
-		time       = $1.to_f
-		node_index = $2.to_i
-		if hash[time] == nil
-			hash[time] = Hash.new
-		end
-		if hash[time][node_index] == nil
-			hash[time][node_index] = Hash.new
-		end
-		hash[time][node_index]["coordinates"] = [ $3.to_i, $4.to_i, $5.to_i ]
-	end
+    if line =~ /(\d+.\d+)\W+(\d+)\W+(\d+)\W+(\d+)\W+(\d+)/
+      time       = $1.to_f
+      node_index = $2.to_i
+      if hash[time] == nil
+        hash[time] = Hash.new
+      end
+      if hash[time][node_index] == nil
+        hash[time][node_index] = Hash.new
+      end
+      hash[time][node_index]["coordinates"] = [ $3.to_i, $4.to_i, $5.to_i ]
+
+      #Write the neighbors into the hash
+      hash[time][node_index]["neighbors"] = Array.new
+      temp = Array.new 
+      temp = line.split(' ')
+
+      #The 4 is kind of a magic number here, 
+      #the fifth entry in the array is the number of neighbors
+      no_neighbors = temp[4]
+      for i in 0...no_neighbors.to_i
+        hash[time][node_index]["neighbors"] << temp[5+i]
+      end
+    end
   end
   return hash
 end
