@@ -238,11 +238,28 @@ end
 
 def draw_rtable(cr, x, y, node, node_data)
     current_y = y
-    cr.move_to(x + RTABLE_X_OFF, current_y)
+    current_x = x + RTABLE_X_OFF
+
+
+    #Draw the box around the Routing Table
+    cr.move_to(current_x, y)
+    cr.set_source_color(:gray)
+
+    #2 times LINE_Y_OFF for the heading, the bare 10 as offset
+    box_size = node_data["neighbors"].count * LINE_Y_OFF + 2 * LINE_Y_OFF + 10
+    cr.rectangle(current_x , y, 120, box_size).fill
+    cr.set_source_color(:black)
+    cr.rectangle(current_x , y, 120, box_size).stroke
+
+    #Draw the actual Routing Table
+    current_y += LINE_Y_OFF
+    cr.set_source_color(:black)
+    cr.move_to(current_x, current_y)
+    cr.show_text( " #{sprintf("Node %d Routing Table", node.to_i)}" )
 
     current_y += LINE_Y_OFF
-    cr.show_text( " #{sprintf("Node %d Routing Table", node.to_i)}" )
-    cr.move_to(x + RTABLE_X_OFF, current_y)
+
+    cr.move_to(current_x, current_y)
     cr.show_text( " Target      NextHop " )
     current_y += LINE_Y_OFF
 
@@ -251,6 +268,7 @@ def draw_rtable(cr, x, y, node, node_data)
         cr.show_text( " #{sprintf(" %d                %d ", neighbor, neighbor)}" )
         current_y += LINE_Y_OFF
     end
+
 end
 
 
