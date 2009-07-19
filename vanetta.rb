@@ -88,6 +88,19 @@ class Contexter
     end
 end
 
+def draw_node( cr, x, y, color)
+    color.alpha = 0.5
+    cr.set_source_color(color)
+    cr.set_line_width(1.0)
+    cr.arc(x, y, 50.0, 0, 2 * Math::PI);
+    cr.fill
+end
+
+def draw_canvas( cr, width, height )
+    cr.set_source_color(:white)
+    cr.rectangle(0, 0, width, height).fill
+end
+
 def draw_topology( streams, width, height, path )
 
     x_max = Integer::MIN; y_max = Integer::MIN;
@@ -147,9 +160,7 @@ def draw_topology( streams, width, height, path )
         context = Contexter.new(@options.format,
                                 @options.output_path + @options.topology + "#{time}")
 
-        # draw canvas
-        context.cr.set_source_color(:white)
-        context.cr.rectangle(0, 0, width, height).fill
+        draw_canvas(context.cr, width, height)
 
         nodes.sort.each do |node, node_data|
 
@@ -158,11 +169,7 @@ def draw_topology( streams, width, height, path )
 
             # display node
             node_color = colors[node.to_i % colors.size]
-            node_color.alpha = 0.5
-            context.cr.set_source_color(node_color)
-            context.cr.set_line_width(1.0)
-            context.cr.arc(x, y, 100.0, 0, 2 * Math::PI);
-            context.cr.fill
+            draw_node(context.cr, x, y, node_color)
 
             # dislay node index
             context.cr.set_source_color(black)
