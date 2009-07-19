@@ -88,6 +88,7 @@ class Contexter
     end
 end
 
+
 def draw_plain_node( cr, x, y, color )
     color.alpha = 0.5
     cr.set_source_color(color)
@@ -95,6 +96,7 @@ def draw_plain_node( cr, x, y, color )
     cr.arc(x, y, 50.0, 0, 2 * Math::PI);
     cr.fill
 end
+
 
 def draw_image_node( cr, x, y, color, image )
     image = Cairo::ImageSurface.from_png(image)
@@ -104,6 +106,7 @@ def draw_image_node( cr, x, y, color, image )
     cr.paint
 end
 
+
 def draw_node( cr, x, y, color)
     if @options.node_image
         draw_image_node(cr, x, y, color, @options.node_image)
@@ -112,10 +115,27 @@ def draw_node( cr, x, y, color)
     end
 end
 
+
 def draw_canvas( cr, width, height )
-    cr.set_source_color(:white)
-    cr.rectangle(0, 0, width, height).fill
+    if true
+        cr.set_source_color(:white)
+        cr.rectangle(0, 0, width, height).fill
+    else
+        image = Cairo::ImageSurface.from_png("grass.png")
+        pattern = Cairo::SurfacePattern.new(image)
+        pattern.extend = Cairo::EXTEND_REPEAT
+
+        matrix = Cairo::Matrix.new(1, 0, 0, -1, 50, 50)
+        pattern.set_matrix(matrix)
+
+        cr.set_source(pattern)
+    end
+
+    cr.rectangle(0, 0, width, height)
+    cr.fill
+    cr.paint
 end
+
 
 def draw_topology( streams, width, height, path )
 
