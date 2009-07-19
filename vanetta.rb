@@ -35,8 +35,6 @@ require 'rdoc/usage'
 require 'ostruct'
 require 'date'
 
-moving_node = 10
-
 DEFAULT_OUTPUT_PATH = "images/"
 W = 2000
 H = 2000
@@ -83,7 +81,6 @@ class Contexter
 			@surface.write_to_png(path + ".png")
 		else
 			@cr.show_page
-			@cr.finish
 		end
 	end
 end
@@ -144,7 +141,8 @@ def draw_topology( streams, width, height, path )
 
 	streams.sort.each do |time, nodes|
 
-		context = Contexter.new(@options.format, @options.output_path + @options.topology + "#{time}")
+		context = Contexter.new(@options.format,
+								@options.output_path + @options.topology + "#{time}")
 
 		# draw canvas
 		context.cr.set_source_color(:white)
