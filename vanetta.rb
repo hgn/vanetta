@@ -237,7 +237,7 @@ def create_topology( streams )
   width = 2000
   height = 2000
 
-  @options.topology = "result"
+  @options.topology = "scenario"
 
   case @options.format
   when "png"
