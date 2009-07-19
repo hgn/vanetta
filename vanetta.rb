@@ -152,20 +152,20 @@ def draw_topology( streams, width, height, path )
 
 		nodes.sort.each do |node, node_data|
 
-			x = node_data["coordinates"][0] - x_offset
-			y = node_data["coordinates"][1] - y_offset
+			x = (node_data["coordinates"][0] - x_offset).to_f * x_scaling
+			y = (node_data["coordinates"][1] - y_offset).to_f * y_scaling
 
 			# display node
 			node_color = colors[node.to_i % colors.size]
 			node_color.alpha = 0.5
 			context.cr.set_source_color(node_color)
 			context.cr.set_line_width(1.0)
-			context.cr.arc(x.to_f * x_scaling, y.to_f * y_scaling, 100.0, 0, 2 * Math::PI);
+			context.cr.arc(x, y, 100.0, 0, 2 * Math::PI);
 			context.cr.fill
 
 			# dislay node index
 			context.cr.set_source_color(black)
-			context.cr.move_to(x.to_f * x_scaling, y.to_f * y_scaling)
+			context.cr.move_to(x, y)
 			context.cr.show_text( " #{sprintf("Node %d", node.to_i)}" )
 			context.cr.stroke
 
