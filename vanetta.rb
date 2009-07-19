@@ -293,13 +293,13 @@ def split_trace_into_streams( file )
 			end
 			hash[time][node_index]["coordinates"] = [ $3.to_i, $4.to_i, $5.to_i ]
 
-			#Write the neighbors into the hash
+			# Write the neighbors into the hash
 			hash[time][node_index]["neighbors"] = Array.new
 			temp = Array.new 
 			temp = line.split(' ')
 
-			#The 4 is kind of a magic number here, 
-			#the fifth entry in the array is the number of neighbors
+			# The 4 is kind of a magic number here, 
+			# the fifth entry in the array is the number of neighbors
 			no_neighbors = temp[4]
 			for i in 0...no_neighbors.to_i
 				hash[time][node_index]["neighbors"] << temp[5+i]
