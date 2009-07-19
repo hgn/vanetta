@@ -88,7 +88,6 @@ class Contexter
     end
 end
 
-
 def draw_plain_node( cr, x, y, color )
     color.alpha = 0.5
     cr.set_source_color(color)
@@ -226,35 +225,34 @@ def draw_topology( streams, width, height, path )
                 context.cr.stroke
             end
 
-      #display node routing table
-      my_x = (node_data["coordinates"][0] - x_offset).to_f * x_scaling
-      my_y = (node_data["coordinates"][1] - y_offset).to_f * y_scaling
-
-      current_y = my_y
-      context.cr.move_to(my_x + RTABLE_X_OFF, current_y)
-
-      current_y += LINE_Y_OFF
-      context.cr.show_text( " #{sprintf("Node %d Routing Table", node.to_i)}" )
-      context.cr.move_to(my_x + RTABLE_X_OFF, current_y)
-      context.cr.show_text( " Target      NextHop " )
-      current_y += LINE_Y_OFF
-
-
-      node_data["neighbors"].each do |neighbor|
-        context.cr.move_to(my_x + RTABLE_X_OFF, current_y)
-        context.cr.show_text( " #{sprintf(" %d                %d ", neighbor, neighbor)}" )
-        current_y += LINE_Y_OFF
-      end
-      context.cr.stroke
+            #display node routing table
+            my_x = (node_data["coordinates"][0] - x_offset).to_f * x_scaling
+            my_y = (node_data["coordinates"][1] - y_offset).to_f * y_scaling
+            draw_rtable(context.cr, my_x, my_y, node, node_data)
 
         end
-
+        context.cr.stroke
         context.fini
     end
-
-
-
 end
+
+def draw_rtable(cr, x, y, node, node_data)
+    current_y = y
+    cr.move_to(x + RTABLE_X_OFF, current_y)
+
+    current_y += LINE_Y_OFF
+    cr.show_text( " #{sprintf("Node %d Routing Table", node.to_i)}" )
+    cr.move_to(x + RTABLE_X_OFF, current_y)
+    cr.show_text( " Target      NextHop " )
+    current_y += LINE_Y_OFF
+
+    node_data["neighbors"].each do |neighbor|
+        cr.move_to(x + RTABLE_X_OFF, current_y)
+        cr.show_text( " #{sprintf(" %d                %d ", neighbor, neighbor)}" )
+        current_y += LINE_Y_OFF
+    end
+end
+
 
 def create_topology( streams, path )
 
