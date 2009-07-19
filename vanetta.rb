@@ -121,7 +121,7 @@ def draw_topology( surface, streams, width, height )
 
 			cr.set_source_color(black)
 			cr.move_to(x.to_f * x_scaling, y.to_f * y_scaling)
-			cr.show_text( " #{sprintf("%d", node.to_i)}" )
+			cr.show_text( " #{sprintf("Node %d", node.to_i)}" )
 			cr.stroke
 		end
 	end
@@ -282,7 +282,7 @@ def split_trace_into_streams( file )
 	fd = File.open(file)
 	fd.readlines.each do |line|
 		line.chomp!
-		if line =~ /(\d+.\d+)\W+(\d+)\W+(\d+)\W+(\d+)\W+(\d+)/
+		if line =~ /(\d+.\d+)\W+(\d+)\W+(\d+)\W+(\d+)\W+(.*)/
 			time       = $1.to_f
 			node_index = $2.to_i
 			if hash[time] == nil
@@ -294,16 +294,7 @@ def split_trace_into_streams( file )
 			hash[time][node_index]["coordinates"] = [ $3.to_i, $4.to_i, $5.to_i ]
 
 			# Write the neighbors into the hash
-			hash[time][node_index]["neighbors"] = Array.new
-			temp = Array.new 
-			temp = line.split(' ')
-
-			# The 4 is kind of a magic number here, 
-			# the fifth entry in the array is the number of neighbors
-			no_neighbors = temp[4]
-			for i in 0...no_neighbors.to_i
-				hash[time][node_index]["neighbors"] << temp[5+i]
-			end
+			hash[time][node_index]["neighbors"] = $5.split(' ')
 		end
 	end
 	return hash
