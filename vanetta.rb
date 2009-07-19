@@ -121,7 +121,7 @@ def draw_canvas( cr, width, height )
         cr.set_source_color(:white)
         cr.rectangle(0, 0, width, height).fill
     else
-        image = Cairo::ImageSurface.from_png("grass.png")
+        image = Cairo::ImageSurface.from_png("data/grass.png")
         pattern = Cairo::SurfacePattern.new(image)
         pattern.extend = Cairo::EXTEND_REPEAT
 
