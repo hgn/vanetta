@@ -88,12 +88,28 @@ class Contexter
     end
 end
 
-def draw_node( cr, x, y, color)
+def draw_plain_node( cr, x, y, color )
     color.alpha = 0.5
     cr.set_source_color(color)
     cr.set_line_width(1.0)
     cr.arc(x, y, 50.0, 0, 2 * Math::PI);
     cr.fill
+end
+
+def draw_image_node( cr, x, y, color, image )
+    image = Cairo::ImageSurface.from_png(image)
+    car_x  = x - (image.width.to_f / 2)
+    car_y  = y - (image.height.to_f / 2)
+    cr.set_source(image, car_x, car_y)
+    cr.paint
+end
+
+def draw_node( cr, x, y, color)
+    if @options.node_image
+        draw_image_node(cr, x, y, color, @options.node_image)
+    else
+        draw_plain_node( cr, x, y, color )
+    end
 end
 
 def draw_canvas( cr, width, height )
@@ -280,6 +296,7 @@ def init( arguments, stdin )
     @options.quiet = false
     @options.format = "png"
     @options.output_path = DEFAULT_OUTPUT_PATH
+    @options.node_image = false
 end
 
 # Parse options, check arguments, then process the command
@@ -306,6 +323,7 @@ def parsed_options?
     opts.on('-q',        '--quiet')      { @options.quiet = true }
     opts.on('-f [format]', '--format')   { |format| @options.format = format}
     opts.on('-d [dir]',    '--directory'){ |path| @options.output_path = path}
+    opts.on('-n [image]', '--node-image'){ |path| @options.node_image = path}
 
     opts.parse!(@arguments) rescue return false
 
