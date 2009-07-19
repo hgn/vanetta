@@ -36,6 +36,9 @@ require 'ostruct'
 require 'date'
 
 DEFAULT_OUTPUT_PATH = "images/"
+RTABLE_X_OFF = 100
+RTABLE_Y_OFF = 0
+LINE_Y_OFF = 20
 W = 2000
 H = 2000
 
@@ -180,6 +183,26 @@ def draw_topology( streams, width, height, path )
 				context.cr.stroke
 			end
 
+      #display node routing table
+      my_x = (node_data["coordinates"][0] - x_offset).to_f * x_scaling
+      my_y = (node_data["coordinates"][1] - y_offset).to_f * y_scaling
+
+      current_y = my_y
+      context.cr.move_to(my_x + RTABLE_X_OFF, current_y)
+
+      current_y += LINE_Y_OFF
+      context.cr.show_text( " #{sprintf("Node %d Routing Table", node.to_i)}" )
+      context.cr.move_to(my_x + RTABLE_X_OFF, current_y)
+      context.cr.show_text( " Target      NextHop " )
+      current_y += LINE_Y_OFF
+
+
+      node_data["neighbors"].each do |neighbor|
+        context.cr.move_to(my_x + RTABLE_X_OFF, current_y)
+        context.cr.show_text( " #{sprintf(" %d                %d ", neighbor, neighbor)}" )
+        current_y += LINE_Y_OFF
+      end
+      context.cr.stroke
 
 		end
 
