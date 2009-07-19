@@ -37,12 +37,58 @@ require 'date'
 
 moving_node = 10
 
+DEFAULT_OUTPUT_PATH = "images/"
+W = 2000
+H = 2000
+
 
 @options
 @trace_file
 
+class Contexter
 
-def draw_topology( surface, streams, width, height )
+	attr_reader :format, :surface, :cr, :path
+
+	def initialize(format, path)
+		@path    = path
+		@format  = format
+		init_context()
+	end
+
+	def init_context()
+
+		case @format
+		when "png"
+			@surface = Cairo::ImageSurface.new(W, H)
+			@cr      = Cairo::Context.new(surface)
+		when "pdf"
+			@surface = Cairo::PDFSurface.new(@path + ".pdf", W, H)
+			@cr      = Cairo::Context.new(surface)
+		else
+			$stderr.print("Format not supported: #{@format}, exiting")
+			exit
+		end
+
+	end
+
+	def reinit( path )
+		self.fini
+		self.init_context( @format, path)
+	end
+
+	def fini
+		case format
+		when "png"
+			@cr.show_page
+			@surface.write_to_png(path + ".png")
+		else
+			@cr.show_page
+			@cr.finish
+		end
+	end
+end
+
+def draw_topology( streams, width, height, path )
 
 	x_max = Integer::MIN; y_max = Integer::MIN;
 	x_min = Integer::MAX; y_min = Integer::MAX;
@@ -63,9 +109,6 @@ def draw_topology( surface, streams, width, height )
 
 	black = Cairo::Color::RGB.new(0.0, 0.0, 0.0)
 
-	cr = Cairo::Context.new(surface)
-	cr.set_source_color(:white)
-	cr.rectangle(0, 0, width, height).fill
 	coordinates = Hash.new
 
 	# first iterate over all x and y values and
@@ -99,146 +142,57 @@ def draw_topology( surface, streams, width, height )
 	x_offset = x_min
 	y_offset = y_min
 
-	# and draw the streams
-	current_x = -1
-	current_y = -1
-	cr.set_line_width(1.0)
-
-
 	streams.sort.each do |time, nodes|
+
+		context = Contexter.new(@options.format, @options.output_path + @options.topology + "#{time}")
+
+		# draw canvas
+		context.cr.set_source_color(:white)
+		context.cr.rectangle(0, 0, width, height).fill
+
 		nodes.sort.each do |node, node_data|
 
 			x = node_data["coordinates"][0] - x_offset
 			y = node_data["coordinates"][1] - y_offset
 
+			# display node
 			node_color = colors[node.to_i % colors.size]
 			node_color.alpha = 0.5
-			cr.set_source_color(node_color)
-			cr.set_line_width(1.0)
-			puts "x #{x.to_f * x_scaling} y #{y.to_f * y_scaling}"
-			cr.arc(x.to_f * x_scaling, y.to_f * y_scaling, 100.0, 0, 2 * Math::PI);
-			cr.fill
+			context.cr.set_source_color(node_color)
+			context.cr.set_line_width(1.0)
+			context.cr.arc(x.to_f * x_scaling, y.to_f * y_scaling, 100.0, 0, 2 * Math::PI);
+			context.cr.fill
 
-			cr.set_source_color(black)
-			cr.move_to(x.to_f * x_scaling, y.to_f * y_scaling)
-			cr.show_text( " #{sprintf("Node %d", node.to_i)}" )
-			cr.stroke
+			# dislay node index
+			context.cr.set_source_color(black)
+			context.cr.move_to(x.to_f * x_scaling, y.to_f * y_scaling)
+			context.cr.show_text( " #{sprintf("Node %d", node.to_i)}" )
+			context.cr.stroke
+
+			# display neighboor links
+			node_data["neighbors"].each do |neighbor|
+				my_x = (node_data["coordinates"][0] - x_offset).to_f * x_scaling
+				my_y = (node_data["coordinates"][1] - y_offset).to_f * y_scaling
+				foreign_x = (nodes[neighbor.to_i]["coordinates"][0] - x_offset).to_f * x_scaling
+				foreign_y = (nodes[neighbor.to_i]["coordinates"][1] - y_offset).to_f * y_scaling
+
+				context.cr.set_source_color(:red)
+				context.cr.move_to(my_x, my_y)
+				context.cr.line_to(foreign_x, foreign_y)
+				context.cr.stroke
+			end
+
+
 		end
+
+		context.fini
 	end
 
 
-	return cr.show_page
-
-	exit
-
-	streams.sort.each do |key, value|
-		draw_already_once = 0
-
-		# rand() ONE value of the whole dataset
-		# if we match this later in the loop we
-		# print the node ID. This is a workaround
-		# to display the IDs per node when they
-		# are somewhere on the map.
-		datasetmatch = value[rand(value.size)]
-
-		matcharray = Array.new
-		# and n values for timestamping
-		diff = value.size / 5
-		current_diff = rand(5)
-		5.times do
-			matcharray << value[current_diff % value.size]
-			current_diff += diff
-		end
-
-		value.each do |dataset|
-
-
-			if current_x == -1 and current_y == -1
-				current_x = dataset[1].to_f
-				current_y = dataset[2].to_f
-				next
-			end
-
-			node_color = colors[key.to_i % colors.size]
-
-			# draw static nodes first
-			if key.to_i != 10
-
-				# draw lines
-				node_color.alpha = 0.3
-				cr.set_line_width(1.0)
-				cr.set_source_color(node_color)
-				cr.move_to(current_x * x_scaling, current_y * y_scaling)
-				cr.line_to(dataset[1].to_f * x_scaling, dataset[2].to_f * y_scaling)
-				cr.stroke
-
-				# draw waypoints
-				if draw_already_once != 1
-
-					node_color = colors[key.to_i % colors.size]
-					node_color.alpha = 0.03
-					cr.set_source_color(node_color)
-					cr.set_line_width(1.0)
-					cr.arc(current_x.to_f  * x_scaling, current_y.to_f * y_scaling, 150.0 * x_scaling, 0, 2 * Math::PI);
-					cr.fill
-					draw_already_once = 1
-
-					node_color = colors[key.to_i % colors.size]
-					node_color.alpha = 1
-					cr.set_source_color(node_color)
-					cr.set_line_width(1.0)
-					cr.arc(current_x.to_f  * x_scaling, current_y.to_f * y_scaling, 150.0 * x_scaling, 0, 2 * Math::PI);
-					cr.stroke
-					draw_already_once = 1
-
-				end
-
-
-			else # dynamic nodes
-
-				# draw lines
-				node_color.alpha = 0.3
-				cr.set_line_width(1.0)
-				cr.set_source_color(node_color)
-				cr.move_to(current_x * x_scaling, current_y * y_scaling)
-				cr.line_to(dataset[1].to_f * x_scaling, dataset[2].to_f * y_scaling)
-				cr.stroke
-
-				# display time information for node 10
-				matcharray.each do |matchentry|
-					if dataset == matchentry and dataset != datasetmatch
-						node_color = colors[key.to_i % colors.size]
-						node_color.alpha = 0.5
-						cr.set_source_color(node_color)
-						cr.move_to(current_x.to_f * x_scaling, current_y.to_f * y_scaling)
-						cr.show_text( " #{sprintf("%.2f", dataset[0])}s" )
-						cr.stroke
-					end
-				end
-			end
-
-			# display node names
-			cr.set_font_size(7)
-			if dataset == datasetmatch
-				cr.set_source_color(:black)
-				cr.move_to(current_x.to_f * x_scaling, current_y.to_f * y_scaling)
-				cr.show_text( " Node #{key}" )
-				cr.stroke
-			end
-
-
-			current_x = dataset[1].to_f
-			current_y = dataset[2].to_f
-		end
-		current_x = -1
-		current_y = -1
-	end
-
-	return cr.show_page
 
 end
 
-def create_topology( streams )
+def create_topology( streams, path )
 
 	require 'cairo'
 
@@ -247,33 +201,8 @@ def create_topology( streams )
 
 	@options.topology = "scenario"
 
-	case @options.format
-	when "png"
-		@options.topology += ".png"
-		sf = Cairo::ImageSurface.new(width, height)
-		cr = draw_topology(sf, streams, width, height)
-		cr.target.write_to_png(@options.topology)
-	when "svg"
-		@options.topology += ".svg"
-		sc = Cairo.const_get("SVGSurface")
-		surface = sc.new(@options.topology,  width, height) 
-		draw_topology(surface, streams, width, height)
-	when "pdf"
-		@options.topology += ".pdf"
-		sc = Cairo.const_get("PDFSurface")
-		surface = sc.new(@options.topology,  width, height) 
-		draw_topology(surface, streams, width, height)
-	when "ps"
-		@options.topology += ".ps"
-		sc = Cairo.const_get("PSSurface")
-		surface = sc.new(@options.topology,  width, height) 
-		draw_topology(surface, streams, width, height)
-	else
-		@options.topology += ".png"
-		sf = Cairo::ImageSurface.new(width, height)
-		cr = draw_topology(sf, streams, width, height)
-		cr.target.write_to_png(@options.topology)
-	end
+	draw_topology(streams, width, height, path)
+
 
 end
 
@@ -301,6 +230,18 @@ def split_trace_into_streams( file )
 end
 
 
+def open_output_dir( path )
+
+	tmp_path = File.expand_path(path)
+	if File.exists?(tmp_path) && File.directory?(tmp_path)
+		$stderr.puts("Output directory \"#{tmp_path}\" exist already - overwrite content!")
+		return
+	end
+
+	Dir.mkdir(tmp_path)
+end
+
+
 def init( arguments, stdin )
 	@arguments = arguments
 	@stdin = stdin
@@ -309,6 +250,8 @@ def init( arguments, stdin )
 	@options = OpenStruct.new
 	@options.verbose = false
 	@options.quiet = false
+	@options.format = "png"
+	@options.output_path = DEFAULT_OUTPUT_PATH
 end
 
 # Parse options, check arguments, then process the command
@@ -334,6 +277,7 @@ def parsed_options?
 	opts.on('-v',        '--verbose')    { @options.verbose = true }  
 	opts.on('-q',        '--quiet')      { @options.quiet = true }
 	opts.on('-f [format]', '--format')   { |format| @options.format = format}
+	opts.on('-d [dir]',    '--directory'){ |path| @options.output_path = path}
 
 	opts.parse!(@arguments) rescue return false
 
@@ -375,7 +319,10 @@ def process_command
 	if @options.verbose
 		puts "topology creation (imagename: #{@options.topology})"
 	end
-	create_topology( streams )
+
+	open_output_dir(@options.output_path)
+
+	create_topology( streams, @options.output_path )
 
 end
 
