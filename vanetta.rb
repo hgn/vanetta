@@ -87,38 +87,52 @@ class Contexter
     end
 end
 
-def draw_plain_node( cr, x, y, color )
-    color.alpha = 0.5
-    cr.set_source_color(color)
-    cr.set_line_width(1.0)
-    cr.arc(x, y, 50.0, 0, 2 * Math::PI);
-    cr.fill
-    puts "drawing Node  at #{x} #{y}" if @options.verbose
+class Theme
+    attr_accessor :canvas_bg_color
+    attr_accessor :node_arc_radius, :node_arc_outline_color, :node_arc_fill_color
+    attr_accessor :node_index_color, :node_index_font_size
+    attr_accessor :direct_neighbor_color, :direct_neighbor_alpha
 end
 
 
-def draw_image_node( cr, x, y, color, image )
+def draw_plain_node( cr, x, y, theme)
+
+    cr.set_source_color(theme.node_arc_fill_color)
+    cr.set_line_width(1.0)
+    cr.arc(x, y, theme.node_arc_radius, 0, 2 * Math::PI);
+    cr.fill
+
+    cr.set_source_color(theme.node_arc_outline_color)
+    cr.set_line_width(2.0)
+    cr.arc(x, y, theme.node_arc_radius, 0, 2 * Math::PI);
+    cr.stroke
+
+    pr_verbose("draw node at x: #{x} y:#{y}")
+end
+
+
+def draw_image_node( cr, x, y, image )
     image = Cairo::ImageSurface.from_png(image)
     car_x  = x - (image.width.to_f / 2)
     car_y  = y - (image.height.to_f / 2)
     cr.set_source(image, car_x, car_y)
     cr.paint
-    puts "drawing vehicle at #{car_x} #{car_y}" if @options.verbose
+    pr_verbose("draw vehicle at x: #{x} y:#{y}")
 end
 
 
-def draw_node( cr, x, y, color)
+def draw_node( cr, x, y, theme)
     if @options.node_image
-        draw_image_node(cr, x, y, color, @options.node_image)
+        draw_image_node(cr, x, y, @options.node_image)
     else
-        draw_plain_node( cr, x, y, color )
+        draw_plain_node( cr, x, y, theme)
     end
 end
 
 
-def draw_canvas( cr, width, height )
+def draw_canvas( cr, width, height, theme )
     if true
-        cr.set_source_color(:white)
+        cr.set_source_color(theme.canvas_bg_color)
         cr.rectangle(0, 0, width, height).fill
     else
         image = Cairo::ImageSurface.from_png("data/grass.png")
@@ -136,8 +150,7 @@ def draw_canvas( cr, width, height )
     cr.paint
 end
 
-
-def draw_topology( streams, width, height, path )
+def draw_topology( streams, width, height, path, theme )
 
     x_max = Integer::MIN; y_max = Integer::MIN;
     x_min = Integer::MAX; y_min = Integer::MAX;
@@ -180,10 +193,8 @@ def draw_topology( streams, width, height, path )
         end
     end
 
-    if @options.verbose
-        $stderr.print "offset x: #{x_min} y: #{y_min}\n"
-        $stderr.print "scaling x: #{x_max - x_min} y: #{y_max - y_min}\n"
-    end
+    pr_verbose("offset x: #{x_min} y: #{y_min}")
+    pr_verbose("scaling x: #{x_max - x_min} y: #{y_max - y_min}")
 
     if x_max != x_min
         x_scaling = height.to_f / (x_max - x_min)
@@ -205,27 +216,25 @@ def draw_topology( streams, width, height, path )
         context = Contexter.new(@options.format,
                                 @options.output_path + @options.topology + "#{time}")
 
-        draw_canvas(context.cr, width, height)
+        draw_canvas(context.cr, width, height, theme)
 
         nodes.sort.each do |node, node_data|
 
             x = (node_data["coordinates"][0] - x_offset).to_f * x_scaling
             y = (node_data["coordinates"][1] - y_offset).to_f * y_scaling
 
-            if @options.verbose
-                puts "Nodes y: #{node_data["coordinates"][1]}"
-                puts "y - Offset: #{node_data["coordinates"][1]} - #{y_offset}"
-                puts "y - scaling: #{y_scaling}"
-                puts "Calculated y: #{y}"
-            end
-
             # display node
-            node_color = colors[node.to_i % colors.size]
-            draw_node(context.cr, x, y, node_color)
+            draw_node(context.cr, x, y, theme)
+
+            pr_verbose("Nodes y: #{node_data["coordinates"][1]}")
+            pr_verbose("y - Offset: #{node_data["coordinates"][1]} - #{y_offset}")
+            pr_verbose("y - scaling: #{y_scaling}")
+            pr_verbose("Calculated y: #{y}")
 
             # dislay node index
-            context.cr.set_source_color(black)
+            context.cr.set_source_color(theme.node_index_color)
             context.cr.move_to(x, y)
+            context.cr.set_font_size(theme.node_index_font_size)
             context.cr.show_text( " #{sprintf("Node %d", node.to_i)}" )
             context.cr.stroke
 
@@ -236,7 +245,10 @@ def draw_topology( streams, width, height, path )
                 foreign_x = (nodes[neighbor.to_i]["coordinates"][0] - x_offset).to_f * x_scaling
                 foreign_y = (nodes[neighbor.to_i]["coordinates"][1] - y_offset).to_f * y_scaling
 
-                context.cr.set_source_color(:red)
+                color = theme.direct_neighbor_color
+                color.alpha = theme.direct_neighbor_alpha
+                context.cr.set_source_color(color)
+                context.cr.set_line_width(1.5)
                 context.cr.move_to(my_x, my_y)
                 context.cr.line_to(foreign_x, foreign_y)
                 context.cr.stroke
@@ -300,18 +312,14 @@ def draw_rtable(cr, x, y, node, node_data)
 end
 
 
-def create_topology( streams, path )
-
-    require 'cairo'
+def create_topology( streams, path, theme)
 
     width = 2000
     height = 2000
 
     @options.topology = "scenario"
 
-    draw_topology(streams, width, height, path)
-
-
+    draw_topology(streams, width, height, path, theme)
 end
 
 def split_trace_into_streams( file )
@@ -374,10 +382,16 @@ def init( arguments, stdin )
     @options.format = "png"
     @options.output_path = DEFAULT_OUTPUT_PATH
     @options.node_image = false
+    @options.theme = "modern"
 end
 
 # Parse options, check arguments, then process the command
 def run
+
+    require 'cairo'
+
+
+    $stderr.puts("# Vanetta (C) - 2009")
 
     if parsed_options? && arguments_valid? 
 
@@ -401,6 +415,7 @@ def parsed_options?
     opts.on('-f [format]', '--format')   { |format| @options.format = format}
     opts.on('-d [dir]',    '--directory'){ |path| @options.output_path = path}
     opts.on('-n [image]', '--node-image'){ |path| @options.node_image = path}
+    opts.on('-t (modern | vehicle)', '--theme (modern | vehicle)'){ |path| @options.theme = path}
 
     opts.parse!(@arguments) rescue return false
 
@@ -432,18 +447,46 @@ def output_version
     $stderr.puts "#{File.basename(__FILE__)} version"
 end
 
+def pr_verbose(string)
+    return unless @options.verbose
+    $stderr.puts "# #{string}"
+end
+
+def load_themes
+
+    theme = Theme.new
+
+    case @options.theme
+    when "modern" # also default
+        theme.canvas_bg_color        = Cairo::Color::RGB.new(52  / 255.0, 69  / 255.0, 85  / 255.0)
+
+        theme.node_arc_radius        = 50.0
+        theme.node_arc_outline_color = Cairo::Color::RGB.new(185 / 255.0, 190 / 255.0, 194 / 255.0)
+        theme.node_arc_fill_color    = Cairo::Color::RGB.new(54  / 255.0, 66  / 255.0, 78  / 255.0)
+
+        theme.node_index_color       = :white
+        theme.node_index_font_size   = 15
+
+        theme.direct_neighbor_color  = Cairo::Color::RGB.new(124 / 255.0, 138 / 255.0, 150 / 255.0)
+        theme.direct_neighbor_alpha  = 0.5
+    when "vehicle"
+    end
+
+    return theme
+end
+
 def process_command
-    $stderr.puts "trace file: #{@trace_file}" if @options.verbose
+    pr_verbose("trace file: #{@trace_file}")
+
+    theme = load_themes
 
     streams = split_trace_into_streams( @trace_file )
-    puts "streams detected #{streams.length}" if @options.verbose
-    if @options.verbose
-        puts "topology creation (imagename: #{@options.topology})"
-    end
+    pr_verbose("streams detected: #{streams.length}")
+    pr_verbose("topology creation (imagename: #{@options.topology})")
 
     open_output_dir(@options.output_path)
 
-    create_topology( streams, @options.output_path )
+    create_topology(streams, @options.output_path, theme )
 
 end
 
