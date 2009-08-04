@@ -150,28 +150,11 @@ def draw_canvas( cr, width, height, theme )
     cr.paint
 end
 
-def draw_topology( streams, width, height, path, theme )
+def calculate_offset_and_scaling(streams, width, height)
 
     x_max = Integer::MIN; y_max = Integer::MIN;
     x_min = Integer::MAX; y_min = Integer::MAX;
-    x_scaling = 0; y_scaling = 0;
-
-    colors = [
-        Cairo::Color::RGB.new(0.0, 0.0, 1),
-        Cairo::Color::RGB.new(0.3, 0.9, 0.7),
-        Cairo::Color::RGB.new(0.1, 0.2, 0.6),
-        Cairo::Color::RGB.new(0.9, 0.8, 0.4),
-        Cairo::Color::RGB.new(0.3, 0.3, 0.2),
-        Cairo::Color::RGB.new(0.6, 0.6, 0.1),
-        Cairo::Color::RGB.new(0.1, 0.9, 0.2),
-        Cairo::Color::RGB.new(0.5, 0.1, 0.5),
-        Cairo::Color::RGB.new(0.8, 0.9, 0.7),
-        Cairo::Color::RGB.new(0.3, 0.3, 0.3),
-    ]
-
-    black = Cairo::Color::RGB.new(0.0, 0.0, 0.0)
-
-    coordinates = Hash.new
+    x_offset = y_offset = x_scaling = y_scaling = 0.0
 
     # first iterate over all x and y values and
     # determine minimum and maximum of it. This
@@ -210,6 +193,30 @@ def draw_topology( streams, width, height, path, theme )
 
     x_offset = x_min
     y_offset = y_min
+
+    return [x_offset, y_offset, x_scaling, y_scaling]
+end
+
+def draw_topology( streams, width, height, path, theme )
+
+    colors = [
+        Cairo::Color::RGB.new(0.0, 0.0, 1),
+        Cairo::Color::RGB.new(0.3, 0.9, 0.7),
+        Cairo::Color::RGB.new(0.1, 0.2, 0.6),
+        Cairo::Color::RGB.new(0.9, 0.8, 0.4),
+        Cairo::Color::RGB.new(0.3, 0.3, 0.2),
+        Cairo::Color::RGB.new(0.6, 0.6, 0.1),
+        Cairo::Color::RGB.new(0.1, 0.9, 0.2),
+        Cairo::Color::RGB.new(0.5, 0.1, 0.5),
+        Cairo::Color::RGB.new(0.8, 0.9, 0.7),
+        Cairo::Color::RGB.new(0.3, 0.3, 0.3),
+    ]
+
+    black = Cairo::Color::RGB.new(0.0, 0.0, 0.0)
+
+    coordinates = Hash.new
+
+    x_offset, y_offset, x_scaling, y_scaling = calculate_offset_and_scaling(streams, width, height)
 
     streams.sort.each do |time, nodes|
 
