@@ -224,7 +224,7 @@ def draw_topology( streams, width, height, path, theme )
         Tool.pr_swirl("draw map for time #{time}/#{last_time}")
 
         context = Contexter.new(@options.format,
-                                @options.output_path + @options.topology + "#{time}")
+                                @options.output_path + @options.topology + "#{sprintf("%03d", time)}")
 
         draw_canvas(context.cr, width, height, theme)
 
@@ -309,7 +309,7 @@ def draw_rtable(cr, x, y, node, node_data)
     current_y += LINE_Y_OFF
     cr.set_source_color(:black)
     cr.move_to(current_x, current_y)
-    cr.show_text( " #{sprintf("Node %d Routing Table", node.to_i)}" )
+    cr.show_text(" #{sprintf("Node %d Routing Table", node.to_i)}")
 
     current_y += LINE_Y_OFF
 
