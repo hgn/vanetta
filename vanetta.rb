@@ -90,12 +90,12 @@ end
 class Theme
     attr_accessor :canvas_bg_color, :canvas_margin
     attr_accessor :node_arc_radius, :node_arc_outline_color, :node_arc_fill_color
-    attr_accessor :node_index_color, :node_index_font_size
+    attr_accessor :node_index_color, :node_index_font_size , :node_index_offset
     attr_accessor :direct_neighbor_color, :direct_neighbor_alpha
 end
 
 
-def draw_plain_node( cr, x, y, theme)
+def draw_plain_node(cr, x, y, theme)
 
     cr.set_source_color(theme.node_arc_fill_color)
     cr.set_line_width(1.0)
@@ -111,7 +111,7 @@ def draw_plain_node( cr, x, y, theme)
 end
 
 
-def draw_image_node( cr, x, y, image )
+def draw_image_node(cr, x, y, image )
     image = Cairo::ImageSurface.from_png(image)
     car_x  = x - (image.width.to_f / 2)
     car_y  = y - (image.height.to_f / 2)
@@ -121,7 +121,7 @@ def draw_image_node( cr, x, y, image )
 end
 
 
-def draw_node( cr, x, y, theme)
+def draw_node(cr, x, y, theme)
     if @options.node_image
         draw_image_node(cr, x, y, @options.node_image)
     else
@@ -242,7 +242,7 @@ def draw_topology( streams, width, height, path, theme )
 
             # dislay node index
             context.cr.set_source_color(theme.node_index_color)
-            context.cr.move_to(x + node_offset, y + node_offset)
+            context.cr.move_to(x + theme.node_index_offset, y + theme.node_index_offset)
             context.cr.set_font_size(theme.node_index_font_size)
             context.cr.show_text(" #{sprintf("Node %d", node.to_i)}")
             context.cr.stroke
@@ -465,7 +465,7 @@ def load_themes
     case @options.theme
     when "modern" # also default
         theme.canvas_bg_color        = Cairo::Color::RGB.new(52  / 255.0, 69  / 255.0, 85  / 255.0)
-        theme.canvas_margin          = 100.0
+        theme.canvas_margin          = 20.0
 
         theme.node_arc_radius        = 50.0
         theme.node_arc_outline_color = Cairo::Color::RGB.new(185 / 255.0, 190 / 255.0, 194 / 255.0)
@@ -473,6 +473,7 @@ def load_themes
 
         theme.node_index_color       = :white
         theme.node_index_font_size   = 15
+        theme.node_index_offset      = 10
 
         theme.direct_neighbor_color  = Cairo::Color::RGB.new(124 / 255.0, 138 / 255.0, 150 / 255.0)
         theme.direct_neighbor_alpha  = 0.5
