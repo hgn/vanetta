@@ -92,6 +92,7 @@ class Theme
     attr_accessor :node_arc_radius, :node_arc_outline_color, :node_arc_fill_color
     attr_accessor :node_index_color, :node_index_font_size , :node_index_offset
     attr_accessor :direct_neighbor_color, :direct_neighbor_alpha, :direct_neighbor_line_width
+    attr_accessor :neighbor_table_bg, :neighbor_table_alpha, :neighbor_table_color
 end
 
 
@@ -268,9 +269,9 @@ def draw_topology( streams, width, height, path, theme )
             end
 
             #display node routing table
-            my_x = (node_data["coordinates"][0] - x_offset).to_f * x_scaling
-            my_y = (node_data["coordinates"][1] - y_offset).to_f * y_scaling
-            #draw_rtable(context.cr, my_x, my_y, node, node_data)
+            my_x = (node_data["coordinates"][0] - x_offset).to_f * x_scaling + node_offset
+            my_y = (node_data["coordinates"][1] - y_offset).to_f * y_scaling + node_offset
+            draw_rtable(context.cr, my_x, my_y + 20, node, node_data, theme)
 
         end
         context.cr.stroke
@@ -278,10 +279,24 @@ def draw_topology( streams, width, height, path, theme )
     end
 end
 
-def draw_rtable(cr, x, y, node, node_data)
+def roundedrec(cr, x, y, w, h, r = 15)
+    cr.move_to(x+r,y)                      # Move to A
+    cr.line_to(x+w-r,y)                    # Straight line to B
+    cr.curve_to(x+w,y,x+w,y,x+w,y+r)       # Curve to C, Control points are both at Q
+    cr.line_to(x+w,y+h-r)                  # Move to D
+    cr.curve_to(x+w,y+h,x+w,y+h,x+w-r,y+h) # Curve to E
+    cr.line_to(x+r,y+h)                    # Line to F
+    cr.curve_to(x,y+h,x,y+h,x,y+h-r)       # Curve to G
+    cr.line_to(x,y+r)                      # Line to H
+    cr.curve_to(x,y,x,y,x+r,y)             # Curve to A
+end
+
+
+def draw_rtable(cr, x, y, node, node_data, theme)
     current_y = y
     current_x = x + RTABLE_X_OFF
 
+    cr.set_font_size(17)
 
     #Draw the box around the Routing Table
     cr.move_to(current_x, y)
@@ -301,13 +316,16 @@ def draw_rtable(cr, x, y, node, node_data)
 
     #2 times LINE_Y_OFF for the heading, the bare 10 as offset
     box_size = routing_table.size * LINE_Y_OFF + 2 * LINE_Y_OFF + 10
-    cr.rectangle(current_x , y, 120, box_size).fill
-    cr.set_source_color(:black)
-    cr.rectangle(current_x , y, 120, box_size).stroke
+    #cr.rectangle(current_x , y, 120, box_size).fill
+    table_bg = theme.neighbor_table_bg
+    table_bg.alpha = theme.neighbor_table_alpha
+    cr.set_source_color(table_bg)
+    roundedrec(cr, current_x , y, 200, box_size)
+    cr.fill
 
     #Draw the actual Routing Table
     current_y += LINE_Y_OFF
-    cr.set_source_color(:black)
+    cr.set_source_color(theme.neighbor_table_color)
     cr.move_to(current_x, current_y)
     cr.show_text(" #{sprintf("Node %d Routing Table", node.to_i)}")
 
@@ -481,9 +499,9 @@ def load_themes
     case @options.theme
     when "modern" # also default
         theme.canvas_bg_color        = Cairo::Color::RGB.new(52  / 255.0, 69  / 255.0, 85  / 255.0)
-        theme.canvas_margin          = 20.0
+        theme.canvas_margin          = 250.0
 
-        theme.node_arc_radius        = 50.0
+        theme.node_arc_radius        = 25.0
         theme.node_arc_outline_color = Cairo::Color::RGB.new(185 / 255.0, 190 / 255.0, 194 / 255.0)
         theme.node_arc_fill_color    = Cairo::Color::RGB.new(54  / 255.0, 66  / 255.0, 78  / 255.0)
 
@@ -494,6 +512,10 @@ def load_themes
         theme.direct_neighbor_color      = Cairo::Color::RGB.new(124 / 255.0, 138 / 255.0, 150 / 255.0)
         theme.direct_neighbor_line_width = 2.0
         theme.direct_neighbor_alpha      = 0.5
+
+        theme.neighbor_table_bg    = Cairo::Color::RGB.new(19 / 255.0, 33 / 255.0, 44 / 255.0)
+        theme.neighbor_table_alpha = 0.9
+        theme.neighbor_table_color = :white
     when "vehicle"
         raise "Theme not supported"
     else
