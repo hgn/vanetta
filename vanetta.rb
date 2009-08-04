@@ -91,7 +91,7 @@ class Theme
     attr_accessor :canvas_bg_color, :canvas_margin
     attr_accessor :node_arc_radius, :node_arc_outline_color, :node_arc_fill_color
     attr_accessor :node_index_color, :node_index_font_size , :node_index_offset
-    attr_accessor :direct_neighbor_color, :direct_neighbor_alpha
+    attr_accessor :direct_neighbor_color, :direct_neighbor_alpha, :direct_neighbor_line_width
 end
 
 
@@ -261,7 +261,7 @@ def draw_topology( streams, width, height, path, theme )
                 color = theme.direct_neighbor_color
                 color.alpha = theme.direct_neighbor_alpha
                 context.cr.set_source_color(color)
-                context.cr.set_line_width(1.5)
+                context.cr.set_line_width(theme.direct_neighbor_line_width)
                 context.cr.move_to(my_x, my_y)
                 context.cr.line_to(foreign_x, foreign_y)
                 context.cr.stroke
@@ -270,7 +270,7 @@ def draw_topology( streams, width, height, path, theme )
             #display node routing table
             my_x = (node_data["coordinates"][0] - x_offset).to_f * x_scaling
             my_y = (node_data["coordinates"][1] - y_offset).to_f * y_scaling
-            draw_rtable(context.cr, my_x, my_y, node, node_data)
+            #draw_rtable(context.cr, my_x, my_y, node, node_data)
 
         end
         context.cr.stroke
@@ -383,6 +383,16 @@ def open_output_dir( path )
     Dir.mkdir(tmp_path)
 end
 
+def create_video
+    mencoder_opts = "vbitrate=2160000:mbd=2:keyint=132:vqblur=1.0:cmp=2:subcmp=2:dia=2:mv0:last_pred=3"
+    olddir = Dir.pwd
+    Dir.chdir("images")
+    puts `mencoder mf://\*.png -mf w=2000:h=2000:fps=1.0:type=png -ovc lavc -lavcopts vcodec=msmpeg4v2:vpass=1:#{mencoder_opts} -oac copy -o /dev/null`
+    puts `mencoder mf://\*.png -mf w=2000:h=2000:fps=1.0:type=png -ovc lavc -lavcopts vcodec=msmpeg4v2:vpass=2:#{mencoder_opts} -oac copy -o output.avi`
+    puts `mv output.avi ..`
+    Dir.chdir(olddir)
+end
+
 
 def init( arguments, stdin )
     @arguments = arguments
@@ -396,6 +406,7 @@ def init( arguments, stdin )
     @options.output_path = DEFAULT_OUTPUT_PATH
     @options.node_image = false
     @options.theme = "modern"
+    @options.multimedia = false
 end
 
 # Parse options, check arguments, then process the command
@@ -422,6 +433,7 @@ def parsed_options?
     opts.on('-h',        '--help')       { output_help }
     opts.on('-v',        '--verbose')    { @options.verbose = true }  
     opts.on('-q',        '--quiet')      { @options.quiet = true }
+    opts.on('-m',        '--multimedia') { @options.multimedia = true }
     opts.on('-f [format]', '--format')   { |format| @options.format = format}
     opts.on('-d [dir]',    '--directory'){ |path| @options.output_path = path}
     opts.on('-n [image]', '--node-image'){ |path| @options.node_image = path}
@@ -476,11 +488,12 @@ def load_themes
         theme.node_arc_fill_color    = Cairo::Color::RGB.new(54  / 255.0, 66  / 255.0, 78  / 255.0)
 
         theme.node_index_color       = :white
-        theme.node_index_font_size   = 15
+        theme.node_index_font_size   = 20
         theme.node_index_offset      = 10
 
-        theme.direct_neighbor_color  = Cairo::Color::RGB.new(124 / 255.0, 138 / 255.0, 150 / 255.0)
-        theme.direct_neighbor_alpha  = 0.5
+        theme.direct_neighbor_color      = Cairo::Color::RGB.new(124 / 255.0, 138 / 255.0, 150 / 255.0)
+        theme.direct_neighbor_line_width = 2.0
+        theme.direct_neighbor_alpha      = 0.5
     when "vehicle"
         raise "Theme not supported"
     else
@@ -500,9 +513,9 @@ def process_command
     pr_verbose("topology creation (imagename: #{@options.topology})")
 
     open_output_dir(@options.output_path)
-
     create_topology(streams, @options.output_path, theme )
 
+    create_video if @options.multimedia
 end
 
 # define Integer::MAX, Integer::MIN
@@ -514,7 +527,6 @@ class Integer
 end
 
 class Tool
-
 	@@current_swirl = 0
 
 	def Tool.pr_swirl(newtext)
