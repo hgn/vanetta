@@ -88,7 +88,7 @@ class Contexter
 end
 
 class Theme
-    attr_accessor :canvas_bg_color
+    attr_accessor :canvas_bg_color, :canvas_margin
     attr_accessor :node_arc_radius, :node_arc_outline_color, :node_arc_fill_color
     attr_accessor :node_index_color, :node_index_font_size
     attr_accessor :direct_neighbor_color, :direct_neighbor_alpha
@@ -150,7 +150,7 @@ def draw_canvas( cr, width, height, theme )
     cr.paint
 end
 
-def calculate_offset_and_scaling(streams, width, height)
+def calculate_offset_and_scaling(streams, width, height, theme)
 
     x_max = Integer::MIN; y_max = Integer::MIN;
     x_min = Integer::MAX; y_min = Integer::MAX;
@@ -179,20 +179,22 @@ def calculate_offset_and_scaling(streams, width, height)
     pr_verbose("offset x: #{x_min} y: #{y_min}")
     pr_verbose("scaling x: #{x_max - x_min} y: #{y_max - y_min}")
 
+    offset = theme.node_arc_radius.to_f * 2 + theme.canvas_margin.to_f * 2
+
     if x_max != x_min
-        x_scaling = height.to_f / (x_max - x_min)
+        x_scaling = (height.to_f - offset) / (x_max - x_min)
     else
-        x_scaling = height.to_f / (x_max)
+        x_scaling = (height.to_f - offset) / (x_max)
     end
 
     if y_max != y_min
-        y_scaling = height.to_f / (y_max - y_min)
+        y_scaling = (height.to_f - offset) / (y_max - y_min)
     else
-        y_scaling = height.to_f / (y_max)
+        y_scaling = (height.to_f - offset) / (y_max)
     end
 
-    x_offset = x_min + 25.0
-    y_offset = y_min + 25.0
+    x_offset = x_min
+    y_offset = y_min
 
     return [x_offset, y_offset, x_scaling, y_scaling]
 end
@@ -213,7 +215,7 @@ def draw_topology( streams, width, height, path, theme )
     ]
 
     x_offset, y_offset, x_scaling, y_scaling =
-        calculate_offset_and_scaling(streams, width, height)
+        calculate_offset_and_scaling(streams, width, height, theme)
 
     streams.sort.each do |time, nodes|
 
@@ -222,10 +224,13 @@ def draw_topology( streams, width, height, path, theme )
 
         draw_canvas(context.cr, width, height, theme)
 
+        # we assume the object is a square (if not: case differentiation for x and y)
+        node_offset = theme.node_arc_radius + theme.canvas_margin
+
         nodes.sort.each do |node, node_data|
 
-            x = (node_data["coordinates"][0] - x_offset).to_f * x_scaling
-            y = (node_data["coordinates"][1] - y_offset).to_f * y_scaling
+            x = (node_data["coordinates"][0] - x_offset).to_f * x_scaling + node_offset
+            y = (node_data["coordinates"][1] - y_offset).to_f * y_scaling + node_offset
 
             # display node
             draw_node(context.cr, x, y, theme)
@@ -237,17 +242,17 @@ def draw_topology( streams, width, height, path, theme )
 
             # dislay node index
             context.cr.set_source_color(theme.node_index_color)
-            context.cr.move_to(x, y)
+            context.cr.move_to(x + node_offset, y + node_offset)
             context.cr.set_font_size(theme.node_index_font_size)
-            context.cr.show_text( " #{sprintf("Node %d", node.to_i)}" )
+            context.cr.show_text(" #{sprintf("Node %d", node.to_i)}")
             context.cr.stroke
 
             # display neighbor links
             node_data["neighbors"].each do |neighbor|
-                my_x = (node_data["coordinates"][0] - x_offset).to_f * x_scaling
-                my_y = (node_data["coordinates"][1] - y_offset).to_f * y_scaling
-                foreign_x = (nodes[neighbor.to_i]["coordinates"][0] - x_offset).to_f * x_scaling
-                foreign_y = (nodes[neighbor.to_i]["coordinates"][1] - y_offset).to_f * y_scaling
+                my_x = (node_data["coordinates"][0] - x_offset).to_f * x_scaling + node_offset
+                my_y = (node_data["coordinates"][1] - y_offset).to_f * y_scaling + node_offset
+                foreign_x = (nodes[neighbor.to_i]["coordinates"][0] - x_offset).to_f * x_scaling + node_offset
+                foreign_y = (nodes[neighbor.to_i]["coordinates"][1] - y_offset).to_f * y_scaling + node_offset
 
                 color = theme.direct_neighbor_color
                 color.alpha = theme.direct_neighbor_alpha
@@ -394,14 +399,11 @@ def run
 
     require 'cairo'
 
-
-    $stderr.puts("# Vanetta (C) - 2009")
+    $stderr.puts("# Vanetta(C) - 2009")
 
     if parsed_options? && arguments_valid? 
-
         process_arguments            
         process_command
-
     else
         output_usage
     end
@@ -463,6 +465,7 @@ def load_themes
     case @options.theme
     when "modern" # also default
         theme.canvas_bg_color        = Cairo::Color::RGB.new(52  / 255.0, 69  / 255.0, 85  / 255.0)
+        theme.canvas_margin          = 100.0
 
         theme.node_arc_radius        = 50.0
         theme.node_arc_outline_color = Cairo::Color::RGB.new(185 / 255.0, 190 / 255.0, 194 / 255.0)
@@ -474,6 +477,9 @@ def load_themes
         theme.direct_neighbor_color  = Cairo::Color::RGB.new(124 / 255.0, 138 / 255.0, 150 / 255.0)
         theme.direct_neighbor_alpha  = 0.5
     when "vehicle"
+        raise "Theme not supported"
+    else
+        raise "Theme not supported"
     end
 
     return theme
