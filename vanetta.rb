@@ -31,7 +31,6 @@
 
 
 require 'optparse' 
-require 'rdoc/usage'
 require 'ostruct'
 require 'date'
 
@@ -94,6 +93,7 @@ def draw_plain_node( cr, x, y, color )
     cr.set_line_width(1.0)
     cr.arc(x, y, 50.0, 0, 2 * Math::PI);
     cr.fill
+    puts "drawing Node  at #{x} #{y}" if @options.verbose
 end
 
 
@@ -103,6 +103,7 @@ def draw_image_node( cr, x, y, color, image )
     car_y  = y - (image.height.to_f / 2)
     cr.set_source(image, car_x, car_y)
     cr.paint
+    puts "drawing vehicle at #{car_x} #{car_y}" if @options.verbose
 end
 
 
@@ -184,8 +185,17 @@ def draw_topology( streams, width, height, path )
         $stderr.print "scaling x: #{x_max - x_min} y: #{y_max - y_min}\n"
     end
 
-    x_scaling = width.to_f / (x_max - x_min)
-    y_scaling = height.to_f / (y_max - y_min)
+    if x_max != x_min
+        x_scaling = height.to_f / (x_max - x_min)
+    else
+        x_scaling = height.to_f / (x_max)
+    end
+
+    if y_max != y_min
+        y_scaling = height.to_f / (y_max - y_min)
+    else
+        y_scaling = height.to_f / (y_max)
+    end
 
     x_offset = x_min
     y_offset = y_min
@@ -202,6 +212,13 @@ def draw_topology( streams, width, height, path )
             x = (node_data["coordinates"][0] - x_offset).to_f * x_scaling
             y = (node_data["coordinates"][1] - y_offset).to_f * y_scaling
 
+            if @options.verbose
+                puts "Nodes y: #{node_data["coordinates"][1]}"
+                puts "y - Offset: #{node_data["coordinates"][1]} - #{y_offset}"
+                puts "y - scaling: #{y_scaling}"
+                puts "Calculated y: #{y}"
+            end
+
             # display node
             node_color = colors[node.to_i % colors.size]
             draw_node(context.cr, x, y, node_color)
@@ -212,7 +229,7 @@ def draw_topology( streams, width, height, path )
             context.cr.show_text( " #{sprintf("Node %d", node.to_i)}" )
             context.cr.stroke
 
-            # display neighboor links
+            # display neighbor links
             node_data["neighbors"].each do |neighbor|
                 my_x = (node_data["coordinates"][0] - x_offset).to_f * x_scaling
                 my_y = (node_data["coordinates"][1] - y_offset).to_f * y_scaling
@@ -245,8 +262,20 @@ def draw_rtable(cr, x, y, node, node_data)
     cr.move_to(current_x, y)
     cr.set_source_color(:gray)
 
+    #Fill the routing table
+    routing_table = Hash.new
+
+    node_data["reachable"].each do |reachable|
+        rt_data = reachable.split('-')
+        routing_table[rt_data[0]] = rt_data[1]
+    end
+
+    node_data["neighbors"].each do |neighbor|
+        routing_table[neighbor] = neighbor
+    end
+
     #2 times LINE_Y_OFF for the heading, the bare 10 as offset
-    box_size = node_data["neighbors"].count * LINE_Y_OFF + 2 * LINE_Y_OFF + 10
+    box_size = routing_table.size * LINE_Y_OFF + 2 * LINE_Y_OFF + 10
     cr.rectangle(current_x , y, 120, box_size).fill
     cr.set_source_color(:black)
     cr.rectangle(current_x , y, 120, box_size).stroke
@@ -263,12 +292,11 @@ def draw_rtable(cr, x, y, node, node_data)
     cr.show_text( " Target      NextHop " )
     current_y += LINE_Y_OFF
 
-    node_data["neighbors"].each do |neighbor|
+    routing_table.each do |target, nexthop|
         cr.move_to(x + RTABLE_X_OFF, current_y)
-        cr.show_text( " #{sprintf(" %d                %d ", neighbor, neighbor)}" )
+        cr.show_text( " #{sprintf(" %d                %d ", target, nexthop)}" )
         current_y += LINE_Y_OFF
     end
-
 end
 
 
@@ -290,20 +318,33 @@ def split_trace_into_streams( file )
     hash = Hash.new
     fd = File.open(file)
     fd.readlines.each do |line|
-        line.chomp!
-        if line =~ /(\d+.\d+)\W+(\d+)\W+(\d+)\W+(\d+)\W+(.*)/
-            time       = $1.to_f
-            node_index = $2.to_i
-            if hash[time] == nil
-                hash[time] = Hash.new
-            end
-            if hash[time][node_index] == nil
-                hash[time][node_index] = Hash.new
-            end
-            hash[time][node_index]["coordinates"] = [ $3.to_i, $4.to_i, $5.to_i ]
 
-            # Write the neighbors into the hash
-            hash[time][node_index]["neighbors"] = $5.split(' ')
+        line.chomp!
+        data = line.split(' ')
+
+        time       = data[0].to_f
+        node_index = data[1].to_i
+
+        if hash[time] == nil
+            hash[time] = Hash.new
+        end
+
+        if hash[time][node_index] == nil
+            hash[time][node_index] = Hash.new
+        end
+        hash[time][node_index]["coordinates"] = [ data[2].to_i, data[3].to_i + 1 ]
+
+        # Write the neighbors into the hash
+        if data[4] != nil
+            hash[time][node_index]["neighbors"] = data[4].split(',')
+        else
+            hash[time][node_index]["neighbors"] = Array.new
+        end
+
+        if data[5] != nil
+            hash[time][node_index]["reachable"] = data[5].split(',')
+        else
+            hash[time][node_index]["reachable"] = Array.new
         end
     end
     return hash
@@ -382,11 +423,9 @@ end
 
 def output_help
     output_version
-    RDoc::usage()
 end
 
 def output_usage
-    RDoc::usage('usage')
 end
 
 def output_version
