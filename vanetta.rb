@@ -191,8 +191,8 @@ def calculate_offset_and_scaling(streams, width, height)
         y_scaling = height.to_f / (y_max)
     end
 
-    x_offset = x_min
-    y_offset = y_min
+    x_offset = x_min + 25.0
+    y_offset = y_min + 25.0
 
     return [x_offset, y_offset, x_scaling, y_scaling]
 end
