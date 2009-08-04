@@ -217,7 +217,11 @@ def draw_topology( streams, width, height, path, theme )
     x_offset, y_offset, x_scaling, y_scaling =
         calculate_offset_and_scaling(streams, width, height, theme)
 
+    last_time = streams.sort[-1][0]
+
     streams.sort.each do |time, nodes|
+
+        Tool.pr_swirl("draw map for time #{time}/#{last_time}")
 
         context = Contexter.new(@options.format,
                                 @options.output_path + @options.topology + "#{time}")
@@ -507,6 +511,29 @@ class Integer
     N_BITS = N_BYTES * 8
     MAX = 2 ** (N_BITS - 2) - 1
     MIN = -MAX - 1
+end
+
+class Tool
+
+	@@current_swirl = 0
+
+	def Tool.pr_swirl(newtext)
+
+		swirl = Array.[]( '-', '/', '|', '\\')
+
+		text = sprintf("\r# %s  %-10s", swirl[@@current_swirl], newtext)
+
+		$stderr.print text
+		@@current_swirl = (@@current_swirl + 1) % 3
+	end
+
+	def Tool.swirl_exit
+
+		tmp = " "; 80.times { tmp << " " }
+		text = sprintf("\r* exiting%s\n", tmp)
+
+		$stdout.print text
+	end
 end
 
 
