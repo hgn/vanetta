@@ -214,8 +214,6 @@ def draw_topology( streams, width, height, path, theme )
 
     black = Cairo::Color::RGB.new(0.0, 0.0, 0.0)
 
-    coordinates = Hash.new
-
     x_offset, y_offset, x_scaling, y_scaling = calculate_offset_and_scaling(streams, width, height)
 
     streams.sort.each do |time, nodes|
