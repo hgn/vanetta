@@ -337,7 +337,9 @@ def draw_rtable(cr, x, y, node, node_data, theme)
 
     routing_table.each do |target, nexthop|
         cr.move_to(x + RTABLE_X_OFF, current_y)
-        cr.show_text( " #{sprintf(" %d                %d ", target, nexthop)}" )
+        if target and nexthop
+            cr.show_text( " #{sprintf(" %d                %d ", target, nexthop)}" )
+        end
         current_y += LINE_Y_OFF
     end
 end
